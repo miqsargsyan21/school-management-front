@@ -23,11 +23,14 @@ import {
   Menu,
   Book,
 } from "@mui/icons-material";
+import { useApp } from "../../../AppContext";
 
 const defaultTheme = createTheme();
 
 const Index = () => {
   const [open, setOpen] = useState(true);
+
+  const { user } = useApp();
 
   const toggleDrawer = () => {
     setOpen(!open);
@@ -74,7 +77,7 @@ const Index = () => {
                 noWrap
                 sx={{ flexGrow: 1 }}
               >
-                Name Surname
+                {user.firstName} {user.lastName}
               </Typography>
               <Badge color="secondary">
                 <Person />

@@ -9,8 +9,11 @@ import {
   Toolbar,
   Typography,
 } from "@mui/material";
+import { useApp } from "../../../AppContext";
 
 const Index = () => {
+  const { user } = useApp();
+
   return (
     <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       <Toolbar
@@ -49,7 +52,7 @@ const Index = () => {
               noWrap
               sx={{ flexGrow: 1 }}
             >
-              Name Surname
+              {user.firstName} {user.lastName}
             </Typography>
             <Badge color="secondary">
               <Person />
