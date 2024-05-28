@@ -14,12 +14,16 @@ import {
   List,
   Link,
   Box,
+  ListItemIcon,
+  ListItemText,
+  ListItemButton,
 } from "@mui/material";
 import {
   EmojiPeople,
   ChevronLeft,
   Person,
   School,
+  Logout,
   Menu,
   Book,
 } from "@mui/icons-material";
@@ -30,10 +34,14 @@ const defaultTheme = createTheme();
 const Index = () => {
   const [open, setOpen] = useState(true);
 
-  const { user } = useApp();
+  const { user, handleSetToken } = useApp();
 
   const toggleDrawer = () => {
     setOpen(!open);
+  };
+
+  const handleLogout = () => {
+    handleSetToken(null);
   };
 
   return (
@@ -115,6 +123,15 @@ const Index = () => {
               icon={<EmojiPeople />}
               text="Pupils"
             />
+          </List>
+          <Divider />
+          <List component="nav">
+            <ListItemButton onClick={handleLogout}>
+              <ListItemIcon>
+                <Logout />
+              </ListItemIcon>
+              <ListItemText primary="Log out" />
+            </ListItemButton>
           </List>
         </Drawer>
         <Box

@@ -1,7 +1,8 @@
 import CustomizedTable from "../../shared/CustomizedTable";
+import { useCallback, useEffect, useState } from "react";
+import { useMutation, useQuery } from "@apollo/client";
 import { Add } from "@mui/icons-material";
 import Modal from "../../shared/Modal";
-import { useEffect, useState } from "react";
 import {
   Typography,
   Container,
@@ -11,20 +12,77 @@ import {
   Grid,
   Box,
 } from "@mui/material";
-import { useQuery } from "@apollo/client";
-import { getSubjectsPageData } from "../../../services/apollo/subjects/queries";
+import {
+  getSubjectsPageData,
+  createSubjectQuery,
+  deleteSubjectQuery,
+} from "../../../services/apollo/subjects/queries";
 
 const Index = () => {
+  const [errorMessage, setErrorMessage] = useState("");
+  const [newSubject, setNewSubject] = useState("");
   const [subjects, setSubjects] = useState([]);
   const [open, setOpen] = useState(false);
 
-  const { loading, error, data } = useQuery(getSubjectsPageData);
+  const { loading, error, data, refetch } = useQuery(getSubjectsPageData);
+
+  const [createSubject] = useMutation(createSubjectQuery, {
+    onCompleted: () => {
+      refetch();
+    },
+  });
+  const [deleteSubject] = useMutation(deleteSubjectQuery, {
+    onCompleted: () => {
+      refetch();
+    },
+  });
 
   useEffect(() => {
     if (!loading && !error && data?.subjects?.length) {
-      setSubjects(data.subjects);
+      const modifiedSubjectsData = data.subjects.map((subject) => {
+        const { teacher, ...restData } = subject;
+
+        return {
+          ...restData,
+          teacher: teacher ? teacher.firstName + " " + teacher.lastName : "",
+        };
+      });
+      setSubjects(modifiedSubjectsData);
     }
-  }, [loading, error]);
+  }, [loading, error, data?.subjects]);
+
+  const handleCreateSubject = useCallback(
+    async (event) => {
+      event.preventDefault();
+
+      const variables = {
+        title: newSubject,
+      };
+      try {
+        const response = await createSubject({
+          variables,
+        });
+
+        if (response.data?.createSubject) {
+          handleClose();
+        } else {
+          throw new Error("Ooops, something went wrong...");
+        }
+      } catch (e) {
+        setErrorMessage("Ooops, something went wrong...");
+        console.error(e.message);
+      }
+    },
+    [createSubject, newSubject],
+  );
+
+  const handleSubjectChange = useCallback((event) => {
+    const {
+      target: { value },
+    } = event;
+
+    setNewSubject(value);
+  }, []);
 
   const handleClose = () => {
     setOpen(false);
@@ -34,11 +92,34 @@ const Index = () => {
     setOpen(true);
   };
 
+  const handleDelete = useCallback(
+    async (id) => {
+      try {
+        const response = await deleteSubject({
+          variables: {
+            id,
+          },
+        });
+
+        if (!response.data?.deleteSubject) {
+          throw new Error("Ooops, something went wrong...");
+        }
+      } catch (e) {
+        console.error(e.message);
+      }
+    },
+    [deleteSubject],
+  );
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Grid item xs={12}>
         <Paper sx={{ p: 2, display: "flex", flexDirection: "column" }}>
-          <CustomizedTable columns={["title", "id"]} rows={subjects} />
+          <CustomizedTable
+            columns={["Title", "Teacher", "id"]}
+            onDelete={handleDelete}
+            rows={subjects}
+          />
           <Box
             sx={{ display: "flex", justifyContent: "end", marginTop: "24px" }}
           >
@@ -60,7 +141,7 @@ const Index = () => {
       <Modal
         open={open}
         handleClose={handleClose}
-        onSubmit={() => {}}
+        onSubmit={handleCreateSubject}
         btnText="Add"
       >
         <Typography
@@ -79,7 +160,13 @@ const Index = () => {
           label="Title"
           name="title"
           autoComplete="Title"
+          onChange={handleSubjectChange}
         />
+        {errorMessage ? (
+          <Typography component="p" variant="p" color="red">
+            {errorMessage}
+          </Typography>
+        ) : null}
       </Modal>
     </Container>
   );

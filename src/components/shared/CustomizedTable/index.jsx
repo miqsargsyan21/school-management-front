@@ -11,15 +11,20 @@ import { useCallback } from "react";
 import PropTypes from "prop-types";
 
 const CustomizedTable = (props) => {
-  const { columns, rows } = props;
+  const { columns, rows, onDelete } = props;
 
   const onEditClick = useCallback((id) => {
     console.log("edit -> id: ", id);
   }, []);
 
-  const onDeleteClick = useCallback((id) => {
-    console.log("delete -> id: ", id);
-  }, []);
+  const onDeleteClick = useCallback(
+    (id) => {
+      if (onDelete) {
+        onDelete(id);
+      }
+    },
+    [onDelete],
+  );
 
   return (
     <TableContainer component={Paper}>
@@ -80,6 +85,7 @@ const CustomizedTable = (props) => {
 CustomizedTable.propTypes = {
   columns: PropTypes.arrayOf(PropTypes.string).isRequired,
   rows: PropTypes.arrayOf(PropTypes.object).isRequired,
+  onDelete: PropTypes.func,
 };
 
 export default CustomizedTable;

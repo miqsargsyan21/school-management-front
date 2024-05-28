@@ -1,8 +1,7 @@
-import { getTeachersPageData } from "../../../services/apollo/teachers/queries";
 import CustomizedTable from "../../shared/CustomizedTable";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useMutation, useQuery } from "@apollo/client";
 import { Add } from "@mui/icons-material";
-import { useQuery } from "@apollo/client";
 import Modal from "../../shared/Modal";
 import {
   OutlinedInput,
@@ -20,26 +19,52 @@ import {
   Grid,
   Box,
 } from "@mui/material";
+import {
+  getTeachersPageData,
+  createTeacherQuery,
+  deleteTeacherQuery,
+} from "../../../services/apollo/teachers/queries";
 
 const Index = () => {
   const [chosenSubjects, setChosenSubjects] = useState([]);
+  const [errorMessage, setErrorMessage] = useState("");
   const [open, setOpen] = useState(false);
+
+  const [teacherData, setTeacherData] = useState({
+    firstName: "",
+    lastName: "",
+  });
+
   const [fetchedData, setFetchedData] = useState({
     teachers: [],
     subjects: [],
   });
 
-  const { loading, error, data } = useQuery(getTeachersPageData);
+  const { loading, error, data, refetch } = useQuery(getTeachersPageData);
+
+  const [createTeacher] = useMutation(createTeacherQuery, {
+    onCompleted: () => {
+      refetch();
+    },
+  });
+
+  const [deleteTeacher] = useMutation(deleteTeacherQuery, {
+    onCompleted: () => {
+      refetch();
+    },
+  });
 
   useEffect(() => {
     if (!loading && !error) {
       setFetchedData({
         teachers: data.teachers
           ? data.teachers.map((teacher) => {
-              const { firstName, lastName, ...restProperties } = teacher;
+              const { firstName, lastName, subjects, ...restProperties } =
+                teacher;
 
               return {
                 name: firstName + " " + lastName,
+                subjects: subjects.map(({ title }) => title).join(", "),
                 ...restProperties,
               };
             })
@@ -47,7 +72,7 @@ const Index = () => {
         subjects: data.subjects ? data.subjects : [],
       });
     }
-  }, [loading, error]);
+  }, [loading, error, data?.teachers, data?.subjects]);
 
   const handleClose = () => {
     setOpen(false);
@@ -67,13 +92,66 @@ const Index = () => {
     );
   };
 
+  const handleTextInputChange = useCallback((event) => {
+    setTeacherData((prevState) => ({
+      ...prevState,
+      [event.target.name]: event.target.value,
+    }));
+  }, []);
+
+  const handleCreateTeacher = useCallback(
+    async (event) => {
+      event.preventDefault();
+
+      const variables = {
+        ...teacherData,
+        subjectIds: chosenSubjects.map((subject) => Number(subject.id)),
+      };
+      try {
+        const response = await createTeacher({
+          variables,
+        });
+
+        if (response.data?.createTeacher) {
+          handleClose();
+        } else {
+          throw new Error("Ooops, something went wrong...");
+        }
+      } catch (e) {
+        setErrorMessage("Ooops, something went wrong...");
+        console.error(e.message);
+      }
+    },
+    [chosenSubjects, createTeacher, teacherData],
+  );
+
+  const handleDelete = useCallback(
+    async (id) => {
+      try {
+        const response = await deleteTeacher({
+          variables: {
+            id,
+          },
+        });
+
+        if (!response.data?.deleteTeacher) {
+          throw new Error("Ooops, something went wrong...");
+        }
+      } catch (e) {
+        console.error(e.message);
+      }
+    },
+    [deleteTeacher],
+  );
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Grid item xs={12}>
         <Paper sx={{ p: 2, display: "flex", flexDirection: "column" }}>
           <CustomizedTable
+            columns={["Name", "Subjects", "id"]}
             rows={fetchedData.teachers}
-            columns={["Name", "id"]}
+            onDelete={handleDelete}
           />
           <Box
             sx={{ display: "flex", justifyContent: "end", marginTop: "24px" }}
@@ -96,7 +174,7 @@ const Index = () => {
       <Modal
         open={open}
         handleClose={handleClose}
-        onSubmit={() => {}}
+        onSubmit={handleCreateTeacher}
         btnText="Add"
       >
         <Typography
@@ -115,6 +193,7 @@ const Index = () => {
           label="First Name"
           name="firstName"
           autoComplete="First Name"
+          onChange={handleTextInputChange}
         />
         <TextField
           margin="normal"
@@ -124,6 +203,7 @@ const Index = () => {
           label="Last Name"
           id="lastName"
           autoComplete="lastName"
+          onChange={handleTextInputChange}
         />
         <FormControl sx={{ width: "100%", marginTop: "16px" }}>
           <InputLabel id="demo-multiple-checkbox-label">Subjects</InputLabel>
@@ -157,6 +237,11 @@ const Index = () => {
             ))}
           </Select>
         </FormControl>
+        {errorMessage ? (
+          <Typography component="p" variant="p" color="red">
+            {errorMessage}
+          </Typography>
+        ) : null}
       </Modal>
     </Container>
   );
