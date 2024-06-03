@@ -46,14 +46,14 @@ function App() {
     if (token) {
       handleGetUserData();
     }
-  }, [token]);
+  }, [getUserData, token]);
 
   return (
     <AppProvider
-      token={token}
       handleSetToken={handleSetToken}
-      user={user}
       setUser={setUser}
+      token={token}
+      user={user}
     >
       <Router>
         <Routes>
